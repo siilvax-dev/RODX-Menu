@@ -1,0 +1,7 @@
+import Link from "next/link";
+import {requireUser} from "@/lib/auth";
+import {Brand} from "@/components/brand";
+import {signOut} from "../auth-actions";
+import {roleLabels,Role} from "@/lib/domain";
+export const dynamic="force-dynamic";
+export default async function Page(){const {client,user}=await requireUser();const {data,error}=await client.from("memberships").select("tenant_id,role,establishments(name,slug)").eq("user_id",user.id);if(error)throw error;const {data:admin}=await client.rpc("is_platform_admin");return <main className="max-w-4xl mx-auto p-6 md:p-12"><header className="flex justify-between items-center"><Brand/><form action={signOut}><button className="btn-secondary">Sair</button></form></header><h1 className="text-4xl font-bold tracking-tight mt-12">Seus estabelecimentos</h1><p className="muted mt-2">Selecione onde deseja trabalhar.</p><div className="grid gap-4 mt-8">{(data||[]).map(m=>{const e=m.establishments as unknown as {name:string;slug:string}|null;return <Link className="surface flex items-center justify-between hover:border-neutral-500" key={m.tenant_id} href={"/painel/"+m.tenant_id+"/visao-geral"}><div><h2 className="text-xl font-semibold">{e?.name}</h2><p className="muted mt-1">{roleLabels[m.role as Role]}</p></div><span>→</span></Link>})}<Link className="btn" href="/onboarding">+ Novo estabelecimento</Link>{admin&&<Link href="/admin" className="btn-secondary">Super Admin RODX</Link>}</div></main>}

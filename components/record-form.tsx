@@ -1,0 +1,12 @@
+import {getFields} from "@/lib/modules";
+import {saveRecord} from "@/app/painel/actions";
+import {acceptedPaymentMethods,defaultPaymentMethods,paymentLabels} from "@/lib/domain";
+export type RecordRow=Record<string,unknown>;
+export function RecordForm({tenant,module,table,row={},options={}}:{tenant:string;module:string;table:string;row?:RecordRow;options?:Record<string,{id:string;name:string}[]>}){
+ return <form action={saveRecord.bind(null,tenant,module)} className="form-grid">{row.id!=null&&<input type="hidden" name="id" value={String(row.id)}/>}<div className="grid sm:grid-cols-2 gap-4">{getFields(table).map(f=>{
+ const value=row[f.key];
+ if(f.kind==="payments"){const selected=Array.isArray(value)?value:defaultPaymentMethods;return <fieldset key={f.key} className="sm:col-span-2 rounded-xl border border-neutral-200 p-4"><legend className="font-semibold px-2">{f.label}</legend><p className="muted text-xs mb-4">Marque pelo menos uma opção. Apenas estas formas serão exibidas no cardápio e no checkout. Pagamento diretamente ao estabelecimento.</p><div className="grid sm:grid-cols-2 gap-3">{acceptedPaymentMethods.map(method=><label key={method} className="flex! items-center gap-2! rounded-lg bg-neutral-50 p-3"><input type="checkbox" name={f.key} value={method} defaultChecked={(selected as readonly string[]).includes(method)}/>{paymentLabels[method]}</label>)}</div></fieldset>}
+ if(f.kind==="checkbox")return <label key={f.key} className="flex! items-center gap-2!"><input name={f.key} type="checkbox" defaultChecked={value===undefined?f.key==="active":Boolean(value)}/>{f.label}</label>;
+ return <label key={f.key}>{f.label}{f.kind==="select"?<select name={f.key} required={f.required} defaultValue={String(value??"")}><option value="" disabled>Selecione</option>{(options[f.source!]||[]).map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select>:f.kind==="textarea"?<textarea name={f.key} maxLength={f.max} placeholder={f.placeholder} defaultValue={String(value??"")} rows={3}/>:<input name={f.key} maxLength={f.max} placeholder={f.placeholder} required={f.required} type={f.kind==="date"?"datetime-local":f.kind==="integer"?"number":"text"} min={f.kind==="integer"?0:undefined} defaultValue={f.kind==="money"?String(Number(value??0)/100).replace(".",","):f.kind==="date"&&value?String(value).slice(0,16):String(value??(f.key==="sort_order"?0:""))}/>}</label>
+ })}</div><button className="btn self-start">{row.id?"Salvar alterações":"Adicionar registro"}</button></form>
+}

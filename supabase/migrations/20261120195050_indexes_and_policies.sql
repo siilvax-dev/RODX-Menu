@@ -1,0 +1,12 @@
+create index categories_tenant_menu_idx on public.categories(tenant_id,menu_id);
+create index products_tenant_category_idx on public.products(tenant_id,category_id);
+create index notifications_tenant_created_idx on public.notifications(tenant_id,created_at desc);
+create index order_events_tenant_order_idx on public.order_events(tenant_id,order_id);
+create index order_events_user_idx on public.order_events(user_id);
+create index order_item_addons_tenant_addon_idx on public.order_item_addons(tenant_id,addon_id);
+create index order_item_addons_tenant_item_idx on public.order_item_addons(tenant_id,item_id);
+create index order_items_tenant_product_idx on public.order_items(tenant_id,product_id);
+create index orders_tenant_coupon_idx on public.orders(tenant_id,coupon_id);
+create index orders_tenant_table_idx on public.orders(tenant_id,table_id);
+create index support_tickets_tenant_idx on public.support_tickets(tenant_id);
+alter policy read_memberships on public.memberships using(user_id=(select auth.uid()) or public.has_role(tenant_id,array['owner']::public.staff_role[]) or public.is_platform_admin());

@@ -1,0 +1,4 @@
+import Link from "next/link";
+import {AuthCard} from "@/components/auth-card";
+import {signIn} from "../auth-actions";
+export default async function Page({searchParams}:{searchParams:Promise<{erro?:string;confirmacao?:string}>}){const q=await searchParams;return <AuthCard title="Bem-vindo de volta." subtitle="Acesse sua operação RODX Menu." error={q.erro}>{q.confirmacao&&<p className="success mb-4">Verifique seu e-mail para confirmar o cadastro.</p>}<form action={signIn} className="form-grid"><label>E-mail<input type="email" name="email" required autoComplete="email"/></label><label>Senha<input type="password" name="password" required minLength={8} autoComplete="current-password"/></label><Link className="text-right underline text-sm" href="/recuperar">Esqueci minha senha</Link><button className="btn">Entrar</button></form><p className="mt-6 muted">Ainda não tem conta? <Link href="/cadastro" className="text-black font-bold">Cadastre-se</Link></p></AuthCard>}

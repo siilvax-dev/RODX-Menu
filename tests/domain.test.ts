@@ -1,0 +1,20 @@
+import {describe,it,expect} from "vitest";
+import {parseMoney,checkoutSchema,transitions,csvCell,acceptedPaymentsSchema,paymentLabel} from "../lib/domain";
+import {formPayload} from "../lib/modules";
+import {plans,comparison,canUseModule,upgradePlan} from "../lib/plans";
+import {resolvePrice,billingSetup} from "../lib/billing-config";
+const id="e7caf5b6-8761-4780-91b8-062dac716258";
+const payload={slug:"pizza-da-casa",request_id:id,mode:"retirada",name:"João Silva",phone:"14999999999",payment:"pix",items:[{product_id:id,quantity:2,addons:[]}]};
+describe("Valores e autorização",()=>{
+ it("usa centavos exatos",()=>{expect(parseMoney("12,90")).toBe(1290);expect(parseMoney("0,01")).toBe(1);expect(()=>parseMoney("-1")).toThrow();expect(()=>parseMoney("1,999")).toThrow()});
+ it("valida carrinho e rejeita quantidades abusivas",()=>{expect(checkoutSchema.safeParse(payload).success).toBe(true);expect(checkoutSchema.safeParse({...payload,items:[{product_id:id,quantity:0,addons:[]}]}).success).toBe(false)});
+ it("exige endereço de delivery e token da mesa",()=>{expect(checkoutSchema.safeParse({...payload,mode:"delivery"}).success).toBe(false);expect(checkoutSchema.safeParse({...payload,mode:"mesa"}).success).toBe(false)});
+ it("rejeita adicionais duplicados",()=>{expect(checkoutSchema.safeParse({...payload,items:[{product_id:id,quantity:1,addons:[id,id]}]}).success).toBe(false)});
+ it("valida formas de pagamento e preserva rótulos históricos",()=>{expect(acceptedPaymentsSchema.parse(["pix","vale_refeicao"])).toEqual(["pix","vale_refeicao"]);for(const invalid of [[],["pix","pix"],["boleto"],["cartao"]])expect(acceptedPaymentsSchema.safeParse(invalid).success).toBe(false);expect(checkoutSchema.safeParse({...payload,payment:"cartao_credito"}).success).toBe(true);expect(checkoutSchema.safeParse({...payload,payment:"boleto"}).success).toBe(false);expect(paymentLabel("cartao")).toBe("Cartão (crédito ou débito)")});
+ it("lê escolhas do formulário de perfil",()=>{const f=new FormData();f.set("name","Loja A");f.set("delivery_fee","0");f.set("description","Sobre a loja");f.set("opening_hours","18h às 23h");f.append("payment_methods","pix");f.append("payment_methods","cartao_debito");expect(formPayload("establishments",f)).toMatchObject({payment_methods:["pix","cartao_debito"],description:"Sobre a loja",opening_hours:"18h às 23h"});f.delete("payment_methods");expect(()=>formPayload("establishments",f)).toThrow()});
+ it("impede avanço e cancelamento pela cozinha",()=>{expect(transitions("pendente","delivery","kitchen")).toEqual([]);expect(transitions("confirmado","delivery","kitchen")).toEqual(["preparando"]);expect(transitions("pronto","delivery","attendant")).toEqual(["em_entrega"])});
+ it("escapa fórmulas e aspas de CSV",()=>{expect(csvCell("=CMD()")).toBe('"\'=CMD()"');expect(csvCell('A"B')).toBe('"A""B"')});
+ it("diferencia os planos e mantém preços em centavos",()=>{expect(plans.map(p=>p.price)).toEqual([4990,9990,14990]);expect(canUseModule("pedidos",1)).toBe(true);expect(canUseModule("cozinha",1)).toBe(false);expect(canUseModule("cozinha",2)).toBe(true);expect(canUseModule("fidelidade",2)).toBe(false);expect(canUseModule("relatorios",3)).toBe(true);expect(upgradePlan("relatorios").id).toBe("premium");expect(comparison.length).toBeGreaterThan(10)});
+ it("habilita os módulos operacionais no Pro",()=>{for(const m of ["pdv","caixa","clientes","entregas","entregadores","salao"]){expect(canUseModule(m,1)).toBe(false);expect(canUseModule(m,2)).toBe(true)}});
+ it("reutiliza IDs do sandbox sem misturar teste e produção",()=>{const env={STRIPE_SECRET_KEY:"rk_test_example",STRIPE_WEBHOOK_SECRET:"whsec_example",SUPABASE_SERVICE_ROLE_KEY:"example"};expect(resolvePrice("pro",env)).toMatch(/^price_/);expect(billingSetup(env).ready).toBe(true);expect(billingSetup({...env,STRIPE_WEBHOOK_SECRET:""}).missing).toContain("STRIPE_WEBHOOK_SECRET");expect(resolvePrice("pro",{STRIPE_SECRET_KEY:"rk_live_example"})).toBeUndefined();expect(billingSetup({...env,STRIPE_SECRET_KEY:"rk_live_example",STRIPE_PRICE_PRO:resolvePrice("pro",env)}).ready).toBe(false);expect(resolvePrice("invalid",env)).toBeUndefined()});
+});

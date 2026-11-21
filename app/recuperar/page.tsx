@@ -1,0 +1,3 @@
+import {AuthCard} from "@/components/auth-card";
+import {resetPassword} from "../auth-actions";
+export default async function Page({searchParams}:{searchParams:Promise<{erro?:string;enviado?:string}>}){const q=await searchParams;return <AuthCard title="Recuperar senha" subtitle="Enviaremos as instruções para o e-mail cadastrado." error={q.erro}>{q.enviado?<p className="success">Se existir uma conta, você receberá o link de recuperação.</p>:<form action={resetPassword} className="form-grid"><label>E-mail<input type="email" name="email" required/></label><button className="btn">Solicitar link</button></form>}</AuthCard>}
